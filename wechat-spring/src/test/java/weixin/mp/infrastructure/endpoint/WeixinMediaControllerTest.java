@@ -1,7 +1,6 @@
 package weixin.mp.infrastructure.endpoint;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -111,9 +110,18 @@ public class WeixinMediaControllerTest extends SpringContainerStarter {
                 .jsonPath("$[0].url").exists();
     }
 
-    @Test
-    @Disabled // TODO
+    @Test // TODO
     public void testReviseDraft() {
+        String body = "{\"errcode\":0,\"errmsg\":\"ok\"}";
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+        headers.add("Content-Type", "text/plain");
+        headers.add("Content-Length", "27");
+
+        Mockito.when(clientHttpConnector.connect(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(Mono.just(clientHttpResponse));
+        Mockito.when(clientHttpResponse.getStatusCode()).thenReturn(HttpStatus.OK);
+        Mockito.when(clientHttpResponse.getHeaders()).thenReturn(HttpHeaders.readOnlyHttpHeaders(headers));
+        Mockito.when(clientHttpResponse.getBody()).thenReturn(Flux.just(DefaultDataBufferFactory.sharedInstance.wrap(body.getBytes(StandardCharsets.UTF_8))));
+
         webClient.put()
                 .uri("/mp/paper/draft/BJvvIFQ7gP1o40JR7X1fFqsVBT8jSL9j-GK_Gvmyj9lcolbeqT5pCY2s9ExbGWW_")
                 .contentType(MediaType.APPLICATION_JSON)

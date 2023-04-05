@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -67,13 +68,13 @@ public class WeixinSupportController extends Tenant {
 
     @GetMapping(value = ExposedPath.QUICK_RESPONSE_CODE, params = {"ticket"})
     @ResponseBody
-    public Mono<HttpEntity> downloadQRImage(@PathVariable("id") String id, @RequestParam("ticket") String ticket) {
+    public Mono<HttpEntity<InputStreamResource>> downloadQRImage(@PathVariable("id") String id, @RequestParam("ticket") String ticket) {
         Context ctx = discriminate(id, managementProperties.accounts());
         WeixinApiFacade facade = new Weixin(ctx, cacheManager.getCache(CacheName.ACCESS_TOKEN), xlock);
         MultiValueMap<String, String> mvm = new LinkedMultiValueMap<>();
         mvm.add(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_JPEG_VALUE);
         return Mono.fromFuture(facade.downloadQuickResponseCode(URLEncoder.encode(ticket, StandardCharsets.UTF_8)))
-                .map(x -> new HttpEntity(x, HttpHeaders.readOnlyHttpHeaders(mvm)));
+                .map(x -> new HttpEntity(new InputStreamResource(x), HttpHeaders.readOnlyHttpHeaders(mvm)));
     }
 
     @PostMapping(ExposedPath.SHORTEN)

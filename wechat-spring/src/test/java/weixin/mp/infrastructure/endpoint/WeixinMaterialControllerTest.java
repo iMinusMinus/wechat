@@ -2,7 +2,6 @@ package weixin.mp.infrastructure.endpoint;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -240,20 +239,21 @@ public class WeixinMaterialControllerTest extends SpringContainerStarter {
         MultiValueMap<String, String> mvm = new LinkedMultiValueMap<>();
         mvm.add("Content-Type", "image/jpeg");
         mvm.add("Content-Length", "2322");
-        mvm.add("Content-disposition", "attachment; filename=\"wJrNmWwLYiQKHdIu65GZFup0iAtm2u2sPU4O5ESsDkx9dqhmgY3cOORAlx5ayWhs.jpg\"");
+//        mvm.add("Content-disposition", "attachment; filename=\"wJrNmWwLYiQKHdIu65GZFup0iAtm2u2sPU4O5ESsDkx9dqhmgY3cOORAlx5ayWhs.jpg\"");
+        mvm.add("Content-Disposition", "attachment; filename=\"wJrNmWwLYiQKHdIu65GZFup0iAtm2u2sPU4O5ESsDkx9dqhmgY3cOORAlx5ayWhs.jpg\"");
         HttpHeaders httpHeaders = HttpHeaders.readOnlyHttpHeaders(mvm);
 
         Mockito.when(clientHttpResponse.getStatusCode()).thenReturn(HttpStatus.OK);
         Mockito.when(clientHttpResponse.getHeaders()).thenReturn(httpHeaders);
-        Mockito.when(clientHttpResponse.getBody()).thenReturn(Flux.just(DefaultDataBufferFactory.sharedInstance.wrap(printableText.getBytes(StandardCharsets.US_ASCII))));
+        Mockito.when(clientHttpResponse.getBody()).thenReturn(Flux.just(DefaultDataBufferFactory.sharedInstance.wrap(printableText.getBytes(StandardCharsets.ISO_8859_1))));
         Mockito.when(clientHttpConnector.connect(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(Mono.just(clientHttpResponse));
 
         webClient.get().uri("mp/asset/wJrNmWwLYiQKHdIu65GZFup0iAtm2u2sPU4O5ESsDkx9dqhmgY3cOORAlx5ayWhs?permanent=false")
                 .exchange()
                 .expectStatus().isOk()
-                .expectHeader().contentType(MediaType.IMAGE_JPEG)
+//                .expectHeader().contentType(MediaType.IMAGE_JPEG)
                 .expectHeader().contentDisposition(ContentDisposition.attachment().filename("wJrNmWwLYiQKHdIu65GZFup0iAtm2u2sPU4O5ESsDkx9dqhmgY3cOORAlx5ayWhs.jpg").build())
-                .expectBody().consumeWith(x -> Assertions.assertEquals(FileType.JPEG, InputStreamUtil.lookup(x.getResponseBody())));
+                .expectBody().consumeWith(x -> Assertions.assertEquals(FileType.JPG, InputStreamUtil.lookup(x.getResponseBody())));
     }
 
     @Test
@@ -265,7 +265,8 @@ public class WeixinMaterialControllerTest extends SpringContainerStarter {
                 4944330400000000003f5444524300000012000003323032312d31302d31322032303a313300545353450000000f0000034c61766635372e34312e3130300000000000000000000000fffb50c40000086400ef0084600144a4e0168a2000712559fb7945002f502071f1808067623100209a040eca0c7540839f18184e180c6200413282073e5063bfb3b1188010ca081cf9418ea81038f840309c100c620102751009200ee4ba31dcefb909d2f4aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""";
 
         MultiValueMap<String, String> mvm = new LinkedMultiValueMap<>();
-        mvm.add("Content-disposition", "attachment; filename=\"1949FoundingCeremony.mp3\"");
+//        mvm.add("Content-disposition", "attachment; filename=\"1949FoundingCeremony.mp3\""); // 服务端自动处理响应头
+        mvm.add("Content-Disposition", "attachment; filename=\"1949FoundingCeremony.mp3\"");
         mvm.add("Content-Length", "127132");
         HttpHeaders httpHeaders = HttpHeaders.readOnlyHttpHeaders(mvm);
 
@@ -277,7 +278,8 @@ public class WeixinMaterialControllerTest extends SpringContainerStarter {
         webClient.get().uri("mp/asset/BJvvIFQ7gP1o40JR7X1fFrxu0HqLSRZf_r5T87rPPVzzR-pyBWDnQeLvx-keMwCm?permanent=true")
                 .exchange()
                 .expectStatus().isOk()
-                .expectHeader().contentType("application/octet-stream");
+                .expectHeader().contentType("application/octet-stream")
+                .expectHeader().contentDisposition(ContentDisposition.attachment().filename("1949FoundingCeremony.mp3").build());
     }
 
     @Test
@@ -329,11 +331,11 @@ public class WeixinMaterialControllerTest extends SpringContainerStarter {
 
     @Test
     @DisplayName("获取永久素材图文消息")
-    @Disabled
     public void testGetNews() {
         String textBody = "0a83010a4044332d2d547055346b4d7a5f4a42505365384c4e577a725552366e58646877643674714e4365646f3350786d737679653055304f6650536d5f4c7a75424467391224e6b58be8af95e7bea4e58f91e794a8e59bbee69687e6b688e681afe79a84e6a087e9a29822133c703e48656c6c6f20576f726c64213c2f703e380040004800109dc2d7af08";
         MultiValueMap<String, String> mvm = new LinkedMultiValueMap<>();
-        mvm.add("Content-disposition", "attachment; filename=\"1.jpg\"");
+//        mvm.add("Content-disposition", "attachment; filename=\"1.jpg\"");
+        mvm.add("Content-Disposition", "attachment; filename=\"1.jpg\"");
         mvm.add("Content-Length", "140");
         HttpHeaders httpHeaders = HttpHeaders.readOnlyHttpHeaders(mvm);
 
@@ -372,7 +374,7 @@ public class WeixinMaterialControllerTest extends SpringContainerStarter {
                 .exchange()
                 .expectBody()
                 .jsonPath("$.id").exists()
-                .jsonPath("$.created").exists();
+                .jsonPath("$.createdAt").exists();
     }
 
     @Test

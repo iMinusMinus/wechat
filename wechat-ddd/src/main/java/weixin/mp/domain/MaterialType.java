@@ -7,7 +7,7 @@ public enum MaterialType {
     VIDEO("video", 10 * 1024, FileType.MP4), // 视频
     THUMB("thumb", 64, FileType.JPG), // 缩略图
 
-    NEWS("news", 1024 /* unknown */, new FileType[0] /* unknown*/),
+    NEWS("news", 1024 /* unknown */),
     ;
 
     /**

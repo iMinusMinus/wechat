@@ -8,10 +8,12 @@ import jakarta.validation.groups.Default;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.CacheManager;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Mono;
 import weixin.mp.domain.Context;
 import weixin.mp.domain.MaterialType;
@@ -30,7 +31,6 @@ import weixin.mp.facade.WeixinMaterialApiFacade;
 import weixin.mp.facade.dto.ManualScript;
 import weixin.mp.facade.dto.Material;
 import weixin.mp.facade.dto.MultiMedia;
-import weixin.mp.facade.dto.Pageable;
 import weixin.mp.facade.dto.Paper;
 import weixin.mp.facade.dto.Publication;
 import weixin.mp.infrastructure.cache.CacheName;
@@ -64,20 +64,25 @@ public class WeixinMaterialController extends Tenant {
     @PostMapping(value = ExposedPath.ASSETS, params = {"permanent"})
     @ResponseBody
     public Mono<MaterialResultVO> uploadAssets(@PathVariable("id") String id,
-                                       @RequestParam(value = "permanent", defaultValue = "false") boolean permanent,
-                                       @RequestParam(value = "broadcast", defaultValue = "false") boolean broadcast,
-                                       @RequestPart("file") MultipartFile multipart,
-                                       @RequestPart(value = "description", required = false) Description description) throws Exception {
+                                               @RequestParam(value = "permanent", defaultValue = "false") boolean permanent,
+                                               @RequestParam(value = "broadcast", defaultValue = "false") boolean broadcast,
+                                               @RequestPart("file") FilePart part,
+                                               @RequestPart(value = "description", required = false) Description description) {
         Context ctx = discriminate(id, managementProperties.accounts());
         WeixinMaterialApiFacade facade = new Weixin(ctx, cacheManager.getCache(CacheName.ACCESS_TOKEN), xlock);
         if (broadcast) {
-            return Mono.fromFuture(facade.uploadImage(multipart.getInputStream(), multipart.getOriginalFilename()))
-                    .map(x -> new MaterialResultVO(null, MaterialType.IMAGE, null, x));
+            return part.content()
+                    .flatMap(buffer -> Mono.fromFuture(facade.uploadImage(buffer.asInputStream(true), part.filename())))
+                    .map(x -> new MaterialResultVO(null, MaterialType.IMAGE, null, x))
+                    .next();
         } else {
             final WeixinMaterialApiFacade.VideoDescription videoDescription = description != null ?
                     new WeixinMaterialApiFacade.VideoDescription(description.title(), description.introduction()) : null;
-            return Mono.fromFuture(facade.upload(multipart.getInputStream(), multipart.getOriginalFilename(), permanent, videoDescription))
-                    .map(MaterialResultVO::from);
+            return part.content()
+                    .flatMap(buffer ->
+                            Mono.fromFuture(facade.upload(buffer.asInputStream(true), part.filename(), permanent, videoDescription)))
+                    .map(MaterialResultVO::from)
+                    .next();
         }
     }
 
@@ -126,7 +131,7 @@ public class WeixinMaterialController extends Tenant {
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         httpHeaders.setContentDisposition(ContentDisposition.attachment().filename(filename).build());
-        return new HttpEntity(body, httpHeaders);
+        return new HttpEntity(new InputStreamResource(body), httpHeaders); // org.springframework.http.converter.HttpMessageNotWritableException: No Encoder for [java.io.ByteArrayInputStream] with preset Content-Type 'application/octet-stream'
     }
 
     private HttpEntity jsonContent(Object body) {
@@ -134,13 +139,14 @@ public class WeixinMaterialController extends Tenant {
         String description = null;
         String url = null;
         List<Press> items = null;
-        if (body instanceof WeixinMaterialApiFacade.News) {
+        if (body instanceof WeixinMaterialApiFacade.News news && news.items() != null) {
             items = new ArrayList<>();
-            for (Paper paper : ((WeixinMaterialApiFacade.News) body).items()) {
+            for (Paper paper : news.items()) {
                 // 未返回评论设置
                 items.add(Press.from(paper));
             }
-        } else if (body instanceof WeixinMaterialApiFacade.Video){
+        }
+        if (body instanceof WeixinMaterialApiFacade.Video){
             title = ((WeixinMaterialApiFacade.Video) body).title();
             description = ((WeixinMaterialApiFacade.Video) body).description();
             url = ((WeixinMaterialApiFacade.Video) body).url();
@@ -164,15 +170,18 @@ public class WeixinMaterialController extends Tenant {
 
     @GetMapping(value =ExposedPath.ASSETS, params = {})
     @ResponseBody
-    public Mono<WeixinMaterialApiFacade.MaterialDistribution> groupCountPermanentMaterial(@PathVariable("id") String id) {
+    public Mono<MaterialSummary> groupCountPermanentMaterial(@PathVariable("id") String id) {
         Context ctx = discriminate(id, managementProperties.accounts());
         WeixinMaterialApiFacade facade = new Weixin(ctx, cacheManager.getCache(CacheName.ACCESS_TOKEN), xlock);
-        return Mono.fromFuture(facade.countMaterialByType());
+        return Mono.fromFuture(facade.countMaterialByType())
+                .map(x -> new MaterialSummary(x.image(), x.news(), x.voice(), x.video()));
     }
+
+    record MaterialSummary(int image, int news, int voice, int video) {}
 
     @GetMapping(value = ExposedPath.ASSETS, params = {"type"})
     @ResponseBody
-    public Mono<Pageable<? extends Material>> list(@PathVariable("id") String id,
+    public Mono<Pagination<? extends Material>> list(@PathVariable("id") String id,
                                @RequestParam("type") MaterialType materialType,
                                @RequestParam(value = "offset", defaultValue = "0", required = false) int offset,
                                @RequestParam(value = "limit", defaultValue = "10", required = false)  @Max(20) @Min(1) int limit) {
@@ -183,11 +192,9 @@ public class WeixinMaterialController extends Tenant {
     }
 
     private static Material fromContract(Material material) {
-        if (material instanceof Publication) {
-            Publication print = (Publication) material;
+        if (material instanceof Publication print) {
             return RevisedDraft.from(print);
-        } else if (material instanceof MultiMedia) {
-            MultiMedia multiMedia = (MultiMedia) material;
+        } else if (material instanceof MultiMedia multiMedia) {
             return new PermanentMaterialItem(multiMedia.id(), multiMedia.name(), multiMedia.updatedAt(), multiMedia.url());
         }
         return null;

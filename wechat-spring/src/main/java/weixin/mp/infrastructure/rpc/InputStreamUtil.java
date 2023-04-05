@@ -32,6 +32,8 @@ public abstract class InputStreamUtil {
 
     private static final byte[] MP4 = {(byte) 0x66, (byte) 0x74, (byte) 0x79, (byte) 0x70, (byte) 0x4D, (byte) 0x53, (byte) 0x4E, (byte) 0x56};
 
+    private static final byte[] MP4_V1 = {(byte) 0x66, (byte) 0x74, (byte) 0x79, (byte) 0x70, (byte) 0x69, (byte) 0x73, (byte) 0x6F, (byte) 0x6D};
+
     /**
      * <a href="https://www.garykessler.net/library/file_sigs.html">根据文件头判断文件格式</a>
      * @link https://www.garykessler.net/library/file_sigs.html
@@ -43,11 +45,10 @@ public abstract class InputStreamUtil {
             log.warn("InputStream[{}] not support mark/reset, skip read it.", is.getClass());
             return null;
         }
-        is.mark(WMA.length);
         byte[] magicNumber = new byte[WMA.length]; // longest magic number count
         try {
-            int readBytes = is.read(magicNumber);
             is.reset();
+            int readBytes = is.read(magicNumber);
             assert readBytes == magicNumber.length;
             return lookup(magicNumber);
         } catch (Exception e) {
@@ -74,7 +75,8 @@ public abstract class InputStreamUtil {
             return FileType.AMR;
         } else if (Arrays.equals(data, 0, MP3.length, MP3, 0, MP3.length)) {
             return FileType.MP3;
-        } else if (Arrays.equals(data, 0, MP4.length, MP4, 0, MP4.length)) {
+        } else if (Arrays.equals(data, 4, MP4.length + 4, MP4, 0, MP4.length)
+                || Arrays.equals(data, 4, MP4_V1.length + 4, MP4_V1, 0, MP4_V1.length)) {
             return FileType.MP4;
         }
         return null;

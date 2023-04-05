@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.json.Jackson2JsonDecoder;
@@ -473,6 +472,7 @@ public record Weixin(Context ctx, Cache cache, Lock lock) implements WeixinApiFa
         String uriTemplate = forever ? WeixinUrl.UPLOAD_PERMANENT_MATERIAL.getUrl() : WeixinUrl.UPLOAD_MATERIAL.getUrl();
         Class responseClass = forever ? PermanentMaterialResponse.class : TemporalMaterialResponse.class;
         FileType fileType = is.markSupported() ? InputStreamUtil.lookup(is) : FileType.getInstance(filename.substring(filename.lastIndexOf(".") + 1));
+        assert fileType != null;
         MaterialType materialType = fileType2materialType(fileType, is);
         Function<String, CompletableFuture<Material>> curl = (accessToken) ->
                 multipart(httpClient.post().uri(uriTemplate, accessToken, materialType.getValue()), is, MEDIA_PARAM_NAME, filename, description)
@@ -588,7 +588,7 @@ public record Weixin(Context ctx, Cache cache, Lock lock) implements WeixinApiFa
                         .bodyValue(new MediaRequest(mediaId)) :
                 httpClient.post().uri(WeixinUrl.DOWNLOAD_MEDIA.getUrl(), accessToken, mediaId);
         Function<ClientResponse, ? extends Mono<Downloadable>> clientResponseHandler = (clientResponse) ->
-                clientResponse.headers().asHttpHeaders().containsKey(HttpHeaders.CONTENT_DISPOSITION) ?
+                clientResponse.headers().asHttpHeaders().getContentDisposition().isAttachment() ?
                         clientResponse.bodyToMono(Resource.class) // 图片、缩略图、音频直接返回流
                                 .map(r -> {
                                     try {

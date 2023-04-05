@@ -490,7 +490,7 @@ public abstract class XmlParser {
         private boolean steppingItems = false;
         private boolean steppingDigest = false;
         protected int size;
-        protected List<String> digests = new ArrayList<>();
+        protected final List<String> digests = new ArrayList<>();
 
         @Override
         void handle(String tagName, String text) {

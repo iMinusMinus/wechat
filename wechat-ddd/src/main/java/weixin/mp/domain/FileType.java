@@ -1,6 +1,5 @@
 package weixin.mp.domain;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -109,7 +108,7 @@ public enum FileType {
     ;
 
     public Iterator<FileType> alias() {
-        return Collections.<FileType>emptyList().iterator();
+        return Collections.emptyIterator();
     }
 
     public static FileType getInstance(String name) {

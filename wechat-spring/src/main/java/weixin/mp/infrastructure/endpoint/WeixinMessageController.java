@@ -20,7 +20,6 @@ import reactor.core.publisher.Mono;
 import weixin.mp.domain.Context;
 import weixin.mp.domain.MessageType;
 import weixin.mp.facade.WeixinMessageApiFacade;
-import weixin.mp.facade.dto.Material;
 import weixin.mp.infrastructure.cache.CacheName;
 import weixin.mp.infrastructure.config.ManagementProperties;
 import weixin.mp.infrastructure.rpc.Weixin;

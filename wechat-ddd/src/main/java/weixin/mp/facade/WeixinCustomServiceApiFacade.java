@@ -94,7 +94,7 @@ public interface WeixinCustomServiceApiFacade {
         TYPING("Typing"),
         CANCEL_TYPING("CancelTyping");
 
-        private String value;
+        private final String value;
         private Command(String value) {
             this.value =value;
         }

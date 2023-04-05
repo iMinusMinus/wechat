@@ -13,7 +13,6 @@ import weixin.mp.domain.ResponseMessageBuilder;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 /**
  * 微信公众号门面
@@ -52,7 +51,7 @@ public record MessageFacadeImpl(Context ctx, MessageHandler handler) implements 
             String encrypt = map.get(XmlParser.ENCRYPT_TAG);
             RequestMessageRetriever request = new RequestMessageRetriever(ctx, messageSignature, timestamp, nonce, encrypt);
             boolean trustable = request.check();
-            if (!trustable && ctx.strict() != null && ctx.strict()) {
+            if (!trustable) {
                 log.info("'{}' message check fail", ctx.appId());
                 return CompletableFuture.failedFuture(new MessageCorruptException("message/event to " + ctx.appId() + " corrupt"));
             }
@@ -60,7 +59,7 @@ public record MessageFacadeImpl(Context ctx, MessageHandler handler) implements 
             log.debug("decrypt message for '{}': {}", ctx.appId(), raw);
         }
         CompletableFuture<ReplyMessage> replyMessage = handler.handleMessage(ctx, XmlParser.parse(raw));
-        ReplyMessage reply = null;
+        ReplyMessage reply;
         try {
             reply = replyMessage.get(WAIT_MSG_TIMEOUT, TimeUnit.MILLISECONDS);
         } catch (Exception e) {

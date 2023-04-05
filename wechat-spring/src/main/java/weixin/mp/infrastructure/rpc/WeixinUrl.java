@@ -346,8 +346,8 @@ public enum WeixinUrl {
     }
 
     public String getUrl() {
-        return "http://localhost" + path + "?" + getQueryString();
-    }// https://api.weixin.qq.com
+        return "https://api.weixin.qq.com" + path + "?" + getQueryString();
+    }
 
     WeixinUrl(String path) {
         this.path = path;
